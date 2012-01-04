@@ -30,11 +30,15 @@ class SocketIO {
 
 		// compose connection
 		$connect = $this->url['host'];
+		$default_port = 80;
 		if ($this->url['scheme'] == 'https') {
 			$connect = 'ssl://'.$connect;
-			$port = $this->url['port']?:443; // will throw a notice if no port
+			$default_port = 443;
+		}
+		if (isset($this->url['port'])) {
+			$port = $this->url['port'];
 		} else {
-			$port = $this->url['port']?:80; // will throw a notice if no port
+			$port = $default_port;
 		}
 
 		$this->fd = fsockopen($connect, $port, $errno, $errstr);
@@ -66,6 +70,10 @@ class SocketIO {
 		$this->raw_send('3::'.$this->url['path'].':'.$msg);
 	}
 
+	public function send_json($obj) {
+		$this->raw_send('4::'.$this->url['path'].':'.json_encode($obj));
+	}
+
 	public function loop() {
 		while(true) {
 			if ($this->stamp < (time()-$this->session[1]-5)) {
@@ -90,8 +98,7 @@ class SocketIO {
 					$pos = strpos($msg, ':');
 					$endpoint = substr($msg, 0, $pos);
 					$msg = substr($msg, 1+$pos);
-					$callback = $this->events['message'];
-					$callback($msg, $endpoint, $msg_id);
+					$this->dispatch('message', array($msg, $endpoint, $msg_id));
 					break;
 				case '4': // "json message"
 					if (!isset($this->events['message'])) break; // ignore event if not catched
@@ -102,11 +109,15 @@ class SocketIO {
 					$pos = strpos($msg, ':');
 					$endpoint = substr($msg, 0, $pos);
 					$msg = json_decode(substr($msg, 1+$pos), true);
-					$callback = $this->events['message'];
-					$callback($msg, $endpoint, $msg_id);
+					$this->dispatch('message', array($msg, $endpoint, $msg_id));
 					break;
 			}
 		}
+	}
+
+	protected function dispatch($callback, $params) {
+		if (!isset($this->events[$callback])) return;
+		return call_user_func_array($this->events[$callback], $params);
 	}
 
 	public function on($event, $callback) {

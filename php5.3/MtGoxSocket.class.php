@@ -11,6 +11,12 @@ class MtGoxSocket extends SocketIO {
 
 	public function handleMessage($msg) {
 		if (is_string($msg)) $msg = json_decode($msg, true);
+		if ($msg['op'] == 'private') {
+			// not a stream command
+			$type = $msg['private'];
+			$this->dispatch($type, array($msg[$type], $type, $msg['channel']));
+			return;
+		}
 		var_dump($msg);
 	}
 
