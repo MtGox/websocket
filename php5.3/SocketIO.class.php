@@ -78,7 +78,7 @@ class SocketIO {
 		while(true) {
 			if ($this->stamp < (time()-$this->session[1]-5)) {
 				// heartbeat time
-				$this->raw_send('2');
+				$this->raw_send('2::');
 				$this->stamp = time();
 			}
 
