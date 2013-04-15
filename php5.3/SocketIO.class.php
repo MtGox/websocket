@@ -74,8 +74,8 @@ class SocketIO {
 		$this->raw_send('4::'.$this->url['path'].':'.json_encode($obj));
 	}
 
-	public function loop() {
-		while(true) {
+	public function loop(&$stay_in_loop = true) {
+		while($stay_in_loop) {
 			if ($this->stamp < (time()-$this->session[1]-5)) {
 				// heartbeat time
 				$this->raw_send('2::');
@@ -87,31 +87,52 @@ class SocketIO {
 			$n = stream_select($r, $w, $e, 5);
 			if ($n == 0) continue;
 
-			$msg = $this->raw_read();
-			switch($msg[0]) {
-				case '3': // "message"
-					if (!isset($this->events['message'])) break; // ignore event if not catched
-					$msg = substr($msg, 2); // strip "3:"
-					$pos = strpos($msg, ':');
-					$msg_id = (string)substr($msg, 0, $pos);
-					$msg = substr($msg, 1+$pos);
-					$pos = strpos($msg, ':');
-					$endpoint = substr($msg, 0, $pos);
-					$msg = substr($msg, 1+$pos);
-					$this->dispatch('message', array($msg, $endpoint, $msg_id));
-					break;
-				case '4': // "json message"
-					if (!isset($this->events['message'])) break; // ignore event if not catched
-					$msg = substr($msg, 2); // strip "4:"
-					$pos = strpos($msg, ':');
-					$msg_id = (string)substr($msg, 0, $pos);
-					$msg = substr($msg, 1+$pos);
-					$pos = strpos($msg, ':');
-					$endpoint = substr($msg, 0, $pos);
-					$msg = json_decode(substr($msg, 1+$pos), true);
-					$this->dispatch('message', array($msg, $endpoint, $msg_id));
-					break;
-			}
+			$this->prvHandleData();
+		}
+	}
+
+	public function getFd() {
+		return $this->fd;
+	}
+
+	public function handleData() {
+		if ($this->stamp < (time()-$this->session[1]-5)) {
+			// heartbeat time
+			$this->raw_send('2::');
+			$this->stamp = time();
+		}
+		$r = array($this->fd);
+		$w = null; $e = null;
+		$n = stream_select($r, $w, $e, 0);
+		if ($n == 0) continue;
+		$this->prvHandleData();
+	}
+
+	private function prvHandleData() {
+		$msg = $this->raw_read();
+		switch($msg[0]) {
+			case '3': // "message"
+				if (!isset($this->events['message'])) break; // ignore event if not catched
+				$msg = substr($msg, 2); // strip "3:"
+				$pos = strpos($msg, ':');
+				$msg_id = (string)substr($msg, 0, $pos);
+				$msg = substr($msg, 1+$pos);
+				$pos = strpos($msg, ':');
+				$endpoint = substr($msg, 0, $pos);
+				$msg = substr($msg, 1+$pos);
+				$this->dispatch('message', array($msg, $endpoint, $msg_id));
+				break;
+			case '4': // "json message"
+				if (!isset($this->events['message'])) break; // ignore event if not catched
+				$msg = substr($msg, 2); // strip "4:"
+				$pos = strpos($msg, ':');
+				$msg_id = (string)substr($msg, 0, $pos);
+				$msg = substr($msg, 1+$pos);
+				$pos = strpos($msg, ':');
+				$endpoint = substr($msg, 0, $pos);
+				$msg = json_decode(substr($msg, 1+$pos), true);
+				$this->dispatch('message', array($msg, $endpoint, $msg_id));
+				break;
 		}
 	}
 
@@ -121,7 +142,16 @@ class SocketIO {
 	}
 
 	public function on($event, $callback) {
+		if (is_null($callback)) {
+			unset($this->events[$event]);
+			return;
+		}
 		$this->events[$event] = $callback;
+	}
+
+	public function get_ev($event) {
+		if (!isset($this->events[$event])) return NULL;
+		return $this->events[$event];
 	}
 
 	protected function raw_read() {

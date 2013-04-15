@@ -17,6 +17,11 @@ class MtGoxSocket extends SocketIO {
 			$this->dispatch($type, array($msg[$type], $type, $msg['channel']));
 			return;
 		}
+		if ($msg['op'] == 'result') {
+			$res = $msg['result'];
+			$this->dispatch('result', array($res, $msg['id']));
+			return;
+		}
 		var_dump($msg);
 	}
 
@@ -34,6 +39,18 @@ class MtGoxSocket extends SocketIO {
 		$call = array('op' => 'call', 'call' => base64_encode($query), 'id' => $id, 'context' => 'mtgox.com');
 		$this->send_json($call);
 		return $id;
+	}
+
+	public function callBlocking($call, $params = array(), $item = null, $currency = null) {
+		$id = $this->call($call, $params, $item, $currency);
+		$ev = $this->get_ev('result');
+		$in_loop = true;
+		$result = null;
+		$this->on('result', function ($msg, $msg_id) use ($id, &$ev, &$in_loop, &$result) { if ($id != $msg_id) { if (!is_null($ev)) $ev($msg, $msg_id); return; } $result = $msg; $in_loop = false; });
+		$this->loop($in_loop);
+		$this->on('result', $ev);
+		return $result;
+
 	}
 }
 
