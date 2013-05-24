@@ -75,7 +75,7 @@ class SocketIO {
 	}
 
 	public function loop(&$stay_in_loop = true) {
-		while($stay_in_loop) {
+	 	do {
 			if ($this->stamp < (time()-$this->session[1]+5)) {
 				// heartbeat time
 				$this->raw_send('2::');
@@ -88,7 +88,8 @@ class SocketIO {
 			if ($n == 0) continue;
 
 			$this->prvHandleData();
-		}
+		} while($stay_in_loop);
+
 	}
 
 	public function getFd() {
@@ -96,16 +97,8 @@ class SocketIO {
 	}
 
 	public function handleData() {
-		if ($this->stamp < (time()-$this->session[1]-5)) {
-			// heartbeat time
-			$this->raw_send('2::');
-			$this->stamp = time();
-		}
-		$r = array($this->fd);
-		$w = null; $e = null;
-		$n = stream_select($r, $w, $e, 0);
-		if ($n == 0) continue;
-		$this->prvHandleData();
+		$f = false;
+		$this->loop($f);
 	}
 
 	private function prvHandleData() {
