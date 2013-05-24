@@ -167,7 +167,7 @@ class SocketIO {
 			}
 			if ($pos === false) {
 				$tmp = fread($this->fd, 4096);
-				if ($tmp === false) throw new \Exception('Lost connection?');
+				if ($tmp === false || feof($this->fd)) throw new \Exception('Lost connection?');
 				$this->buf .= $tmp;
 				continue;
 			}
