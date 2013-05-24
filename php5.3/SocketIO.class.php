@@ -84,7 +84,7 @@ class SocketIO {
 
 			$r = array($this->fd);
 			$w = null; $e = null;
-			$n = stream_select($r, $w, $e, 5);
+			$n = @stream_select($r, $w, $e, 5);
 			if ($n == 0) continue;
 
 			$this->prvHandleData();
