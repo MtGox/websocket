@@ -1,0 +1,16 @@
+{
+    "name": "mtgox/websocket",
+    "description": "MtGox websocket library for php",
+    "license": "",
+    "keywords": [
+        "MtGox",
+        "Websocket",
+        "Stream"
+    ],
+    "require": {
+        "php": ">=5.3.3"
+    },
+    "autoload": {
+        "classmap": ["php5.3"]
+    }
+}
